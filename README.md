@@ -95,6 +95,12 @@ bean-extract example.import wacai_example_file > result.bean
 > Expenses:Unknown:求医买药  
 > Expenses:Unknown:花鸟宠物  
 
-可据此手动在主账本中，使用 `open` 补齐这些账户。最终结果可参考 `result.bean`。
+可据此手动在主账本中，使用 `open` 补齐这些账户，如有修改需要请使用批量替换工具处理。输出结果可参考 `result.bean`。
+
+最后在主账本中引入：
+
+```beancount
+include "result.bean"
+```
 
 **注意** 在 Windows CMD 中，最终输出的文件可能是 GBK 编码，这将需要你手动转换文件编码。
