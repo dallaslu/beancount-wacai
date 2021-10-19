@@ -1,0 +1,131 @@
+;; -*- mode: beancount -*-
+**** wacai_example_file\wacai_日常账本_202101011200001_123.xlsx
+
+2021-01-02 *
+  time: "23:22:21"
+  Assets:Alipay:Fund     -99.9 CNY
+  Expenses:Unknown:购物其他
+
+2021-02-02 * "京东" "商家消费"
+  time: "22:21:20"
+  Assets:CN:CMB          -200.0 CNY
+  Expenses:Unknown:数码产品
+
+2021-03-01 * "信用卡消费"
+  time: "08:09:10"
+  Assets:Unknown:招商信用卡        -99.0 CNY
+  Expenses:Shopping:Clothing
+
+2021-03-22 * "对账"
+  time: "19:20:21"
+  Assets:Cash:Wallet   -58.0 CNY
+  Expenses:Unknown:对帐
+
+2021-04-02 * "美元消费，未报销" #Pending ^Reimburse
+  time: "09:10:11"
+  Assets:Unknown:招商信用卡-美元  -35.88 USD
+  Expenses:Unknown:代付款          0 USD
+  Assets:Reimburse
+
+2021-04-03 * "成员消费"
+  time: "10:11:12"
+  Assets:Unknown:招商信用卡
+  Expenses:Unknown:手机电话  99.85 CNY
+    member: "老婆"
+
+2021-05-01 * "小张" "代缴话费"
+  time: "20:20:20"
+  Assets:Unknown:招商信用卡  -100.0 CNY
+  Assets:Receivables
+
+2021-05-02 * "小张" "收款"
+  time: "20:00:00"
+  Assets:CN:CMB       100.0 CNY
+  Assets:Receivables
+
+2021-05-03 * "第一医院" "指定项目" #gong1-si1
+  time: "16:17:19"
+  Assets:Cash:Wallet     -188.3 CNY
+  Expenses:Unknown:求医买药
+
+2021-05-30 * "余额调整产生的烂账"
+  time: "22:21:20"
+  Assets:Cash:Wallet       -56.0 CNY
+  Equity:Opening-Balances
+
+2021-06-01 * "Apple" "美元消费"
+  time: "14:15:16"
+  Assets:Unknown:招商信用卡-美元     -9.99 USD
+  Expenses:Shopping:Software
+
+2021-06-15 * "中国电信" "已报销消费" ^Reimburse
+  time: "16:17:18"
+  Assets:Unknown:招商信用卡  -49.0 CNY
+  Expenses:Unknown:代付款      0 CNY
+  Assets:Reimburse
+
+2021-07-01 * "多成员消费"
+  time: "17:18:19"
+  Assets:Alipay:Fund
+  Expenses:Unknown:花鸟宠物  200.00 CNY
+    member: "阿猫"
+  Expenses:Unknown:花鸟宠物  234.00 CNY
+    member: "阿狗"
+
+2021-07-02 *
+  time: "17:18:19"
+  Assets:Unknown:北京银行卡  1345.6 CNY
+  Income:Other
+
+2021-07-06 * "借呗" ""
+  time: "08:08:08"
+  Assets:CN:CMB        2000.0 CNY
+  Liabilities:Payable
+
+2021-07-15 * "2021年06月15日至2021年06月16日的公司可报销金额CNY198.00，实际报销CNY150.00" #gong1-si1 ^Reimburse
+  time: "12:11:10"
+  Assets:CN:CMB     150.0 CNY
+  Assets:Reimburse
+
+2021-08-02 *
+  time: "18:19:20"
+  Assets:Tencent:Wechat:Fund  133.0 CNY
+  Income:Other
+
+2021-08-06 * "借呗" "有利息"
+  time: "18:18:18"
+  Assets:CN:CMB        -1234.0 CNY
+  Expenses:Interest       2.47 CNY
+  Liabilities:Payable
+
+2021-08-28 * "2021年04月02日的数码产品，可报销CNY288.88，实际报销CNY288.88" #gong1-si1 ^Reimburse
+  time: "12:24:48"
+  Assets:CN:CMB     898.57 CNY
+  Assets:Reimburse
+
+2021-08-29 *
+  time: "19:19:19"
+  Assets:CN:CMB      0.08 CNY
+  Income:Unknown:利息
+
+2021-09-01 * "余额调整产生的烂账"
+  time: "02:22:12"
+  Assets:Alipay:Fund       4.47 CNY
+  Equity:Opening-Balances
+
+2021-09-01 * "XX科技" "有付款方、项目" #gong1-si1
+  time: "22:33:44"
+  Assets:CN:CMB  12345.0 CNY
+  Income:Salary
+
+2021-09-10 * "转账：支付宝 -> 交行信用卡"
+  time: "23:59:59"
+  Assets:Unknown:交行信用卡  2.99 CNY
+  Assets:Alipay:Fund
+
+2021-09-18 * "转账：招商卡 -> 微信"
+  time: "05:00:00"
+  Assets:Tencent:Wechat:Fund  8000.0 CNY
+  Assets:CN:CMB
+
+

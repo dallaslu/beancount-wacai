@@ -1,0 +1,21 @@
+option "title" "Wacai Importer Example"
+
+option "operating_currency" "CNY"
+
+1970-01-01 open Assets:Cash:Wallet	;现金
+1970-01-01 open Assets:CN:CMB  ;招商卡
+1970-01-01 open Assets:Tencent:Wechat:Fund  ;微信
+1970-01-01 open Assets:Alipay:Fund  ;支付宝
+1970-01-01 open Assets:Receivables
+1970-01-01 open Assets:Reimburse
+
+1970-01-01 open Income:Salary  ;工资
+1970-01-01 open Income:Other
+
+1970-01-01 open Expenses:Shopping:Clothing ;衣服鞋帽
+1970-01-01 open Expenses:Shopping:Software ;软件服务
+
+1970-01-01 open Liabilities:CN:CMB  ;招商信用卡
+1970-01-01 open Liabilities:Payable
+
+1970-01-01 open Equity:Opening-Balances
