@@ -1,10 +1,13 @@
 from setuptools import setup
 from setuptools import find_packages
 
-VERSION = '0.1.1'
+VERSION = '0.1.2'
 
 with open('README.md', 'r', encoding='UTF-8') as f:
     LONG_DESCRIPTION = f.read()
+
+with open('requirements.txt', 'r') as f:
+    REQUIREMENTS = list(filter(None, f.read().split('\n')))
 
 setup(
     name='beancount-wacai',
@@ -19,11 +22,7 @@ setup(
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
     packages=find_packages(),
-    install_requires=[
-        'beancount>=2.3.4',
-        'pypinyin>=0.43.0',
-        'xlwings>=0.24.9',
-    ],
+    install_requires=REQUIREMENTS,
     classifiers=[
         'Programming Language :: Python :: 3',
         'Operating System :: OS Independent',
