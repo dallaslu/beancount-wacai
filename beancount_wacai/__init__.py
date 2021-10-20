@@ -83,296 +83,285 @@ class WacaiImporter(importer.ImporterProtocol):
             if sheet_name == "借入借出":
                 entries.extend(self.__handle_borrow_lend(sheet, file_name, book_name))
         wb.close()
-        if self: print_unknow_account:
-        sys.stderr.write('Unknown accounts:\n')
-        sys.stderr.write('\n'.join(self.unknown_accounts))
-        sys.stderr.write('\n')
-        sys.stderr.write('\n'.join(self.unknown_income))
-        sys.stderr.write('\n')
-        sys.stderr.write('\n'.join(self.unknown_expenses))
-        sys.stderr.write('\n')
+        if self.print_unknown_account:
+            sys.stderr.write('Unknown accounts:\n')
+            sys.stderr.write('\n'.join(self.unknown_accounts))
+            sys.stderr.write('\n')
+            sys.stderr.write('\n'.join(self.unknown_income))
+            sys.stderr.write('\n')
+            sys.stderr.write('\n'.join(self.unknown_expenses))
+            sys.stderr.write('\n')
+        return entries
 
-    return entries
+    def __get_account(self, s):
+        account = self.assets_map.get(s)
+        if not account:
+            account = 'Assets:Unknown:%s' % s.strip()
+            self.unknown_accounts.add(account)
+        return account
 
+    def __get_currency(self, s):
+        return self.currency_map.get(s, 'UNKNOWN.' + s).strip()
 
-def __get_account(self, s):
-    account = self.assets_map.get(s)
-    if not account:
-        account = 'Assets:Unknown:%s' % s.strip()
-        self.unknown_accounts.add(account)
-    return account
+    def __get_income(self, s):
+        account = self.income_map.get(s)
+        if not account:
+            account = 'Income:Unknown:%s' % s.strip()
+            self.unknown_income.add(account)
+        return account
 
+    def __get_expense(self, s):
+        account = self.expenses_map.get(s)
+        if not account:
+            account = 'Expenses:Unknown:%s' % s.strip()
+            self.unknown_expenses.add(account)
+        return account
 
-def __get_currency(self, s):
-    return self.currency_map.get(s, 'UNKNOWN.' + s).strip()
+    def __handle_sheet(self, sheet, handler):
+        def create_reader(row):
+            row_str = str(row)
 
+            def read_value(col):
+                value = sheet[col + row_str].value
+                if value is None:
+                    value = ''
+                if isinstance(value, str):
+                    value = value.strip()
+                else:
+                    value = str(value)
+                # 替换 ￥ 避免 GBK 错误
+                return value.replace('¥', 'CNY')
 
-def __get_income(self, s):
-    account = self.income_map.get(s)
-    if not account:
-        account = 'Income:Unknown:%s' % s.strip()
-        self.unknown_income.add(account)
-    return account
+            return read_value;
 
-
-def __get_expense(self, s):
-    account = self.expenses_map.get(s)
-    if not account:
-        account = 'Expenses:Unknown:%s' % s.strip()
-        self.unknown_expenses.add(account)
-    return account
-
-
-def __handle_sheet(self, sheet, handler):
-    def create_reader(row):
-        row_str = str(row)
-
-        def read_value(col):
-            value = sheet[col + row_str].value
-            if value is None:
-                value = ''
-            if isinstance(value, str):
-                value = value.strip()
+        entries = []
+        for row in range(2, 999999999):
+            read_value = create_reader(row)
+            time_str = read_value('A')
+            if re.match(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', str(time_str)):
+                date_str = time_str[0:10]
+                time_str = time_str[11:19]
+                entry = handler(read_value, parse_date_liberally(date_str, self.dateutil_kwds), time_str, row)
+                if entry:
+                    entries.append(entry)
             else:
-                value = str(value)
-            # 替换 ￥ 避免 GBK 错误
-            return value.replace('¥', 'CNY')
+                break
+        # sys.stderr.write('load %s entries from sheet %s\n' % (len(entries), sheet.name))
+        return entries
 
-        return read_value;
+    def __handle_receipt_repayment(self, sheet, file_name, book_name):
+        def handler(read, date_value, time_value, row):
+            record_type = read('B')
+            payee = read('C')
+            account = read('D')
+            amount = read('E')
+            interest = read('F')
+            narration = read('G')
 
-    entries = []
-    for row in range(2, 999999999):
-        read_value = create_reader(row)
-        time_str = read_value('A')
-        if re.match(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', str(time_str)):
-            date_str = time_str[0:10]
-            time_str = time_str[11:19]
-            entry = handler(read_value, parse_date_liberally(date_str, self.dateutil_kwds), time_str, row)
-            if entry:
-                entries.append(entry)
-        else:
-            break
-    # sys.stderr.write('load %s entries from sheet %s\n' % (len(entries), sheet.name))
-    return entries
+            if narration == '':
+                narration = record_type
 
+            meta = data.new_metadata(file_name, row)
+            meta['time'] = time_value
+            txn = data.Transaction(meta, date_value, "*", payee, narration,
+                                   set(book_name) if book_name is not None else set(), set(), [])
+            # TODO Currency
+            currency = 'CNY'
 
-def __handle_receipt_repayment(self, sheet, file_name, book_name):
-    def handler(read, date_value, time_value, row):
-        record_type = read('B')
-        payee = read('C')
-        account = read('D')
-        amount = read('E')
-        interest = read('F')
-        narration = read('G')
-
-        if narration == '':
-            narration = record_type
-
-        meta = data.new_metadata(file_name, row)
-        meta['time'] = time_value
-        txn = data.Transaction(meta, date_value, "*", payee, narration,
-                               set(book_name) if book_name is not None else set(), set(), [])
-        # TODO Currency
-        currency = 'CNY'
-
-        if record_type == "还款":
-            txn.postings.append(
-                data.Posting(self.__get_account(account), data.Amount(-D(amount), currency), None, None, None,
-                             None))
-            if str(interest) not in ('0.00', '0.0', '0'):
+            if record_type == "还款":
                 txn.postings.append(
-                    data.Posting(self.expenses_interest, data.Amount(D(interest), currency), None, None, None,
+                    data.Posting(self.__get_account(account), data.Amount(-D(amount), currency), None, None, None,
                                  None))
-            txn.postings.append(
-                data.Posting(self.account_debt, None, None, None, None, None))
-        else:  # 收款
-            txn.postings.append(
-                data.Posting(self.__get_account(account), data.Amount(D(amount), currency), None, None, None, None))
-            txn.postings.append(
-                data.Posting(self.account_credit, None, None, None, None, None))
-
-        return txn
-
-    return self.__handle_sheet(sheet, handler)
-
-
-def __handle_borrow_lend(self, sheet, file_name, book_name):
-    def handler(read, date_value, time_value, row):
-        record_type = read('B')
-        amount = read('C')
-        payee = read('D')
-        account = read('E')
-        narration = read('F')
-
-        meta = data.new_metadata(file_name, row)
-        meta['time'] = time_value
-        txn = data.Transaction(meta, date_value, "*", payee, narration.strip(),
-                               set(book_name) if book_name is not None else set(), set(), [])
-        # TODO Currency
-        currency = 'CNY'
-
-        if record_type == "借出":
-            txn.postings.append(
-                data.Posting(self.__get_account(account), data.Amount(-D(amount), currency), None, None, None,
-                             None))
-            txn.postings.append(
-                data.Posting(self.account_credit, None, None, None, None, None))
-        else:  # 收款
-            txn.postings.append(
-                data.Posting(self.__get_account(account), data.Amount(D(amount), currency), None, None, None, None))
-            txn.postings.append(
-                data.Posting(self.account_debt, None, None, None, None, None))
-        return txn
-
-    return self.__handle_sheet(sheet, handler)
-
-
-def __handle_expenses(self, sheet, file_name, book_name):
-    def handler(read, date_value, time_value, row):
-        cate_a = read('B')
-        cate_b = read('C')
-        amount = read('D')
-        currency = read('E')
-        account = read('F')
-        project = read('G')
-        payee = read('H')
-        reimburse_status = read('I')
-        members = read('J')
-        narration = read('K')
-
-        tags = set(book_name) if book_name is not None else set()
-        links = set()
-
-        if project != "日常":
-            tags.add('-'.join(lazy_pinyin(project, style=Style.TONE3, neutral_tone_with_five=True)))
-        if reimburse_status == "待报销":
-            tags.add('Pending')
-        if reimburse_status == "待报销" or reimburse_status == "已报销":
-            links.add('Reimburse')
-
-        meta = data.new_metadata(file_name, row)
-        meta['time'] = time_value
-        txn = data.Transaction(meta, date_value, "*", payee, narration.strip(),
-                               tags, links, [])
-
-        if cate_b == '漏记款':
-            account_expense = self.account_ufo
-        else:
-            account_expense = self.__get_expense(cate_b)
-        if not re.match(r'自己：\d+\.\d+', str(members)):
-            # 有多个成员
-            txn.postings.append(
-                data.Posting(self.__get_account(account), None, None, None,
-                             None, None))
-            for m in str.split(str(members), "，"):
-                foo = str.split(m, "：")
-                member = foo[0]
-                member_amount = foo[1]
-                meta = data.new_metadata(file_name, row)
-                if member != "自己":
-                    meta['member'] = member
+                if str(interest) not in ('0.00', '0.0', '0'):
+                    txn.postings.append(
+                        data.Posting(self.expenses_interest, data.Amount(D(interest), currency), None, None, None,
+                                     None))
                 txn.postings.append(
-                    data.Posting(account_expense,
-                                 data.Amount(D(member_amount), self.__get_currency(currency)), None, None, None,
-                                 meta))
+                    data.Posting(self.account_debt, None, None, None, None, None))
+            else:  # 收款
+                txn.postings.append(
+                    data.Posting(self.__get_account(account), data.Amount(D(amount), currency), None, None, None, None))
+                txn.postings.append(
+                    data.Posting(self.account_credit, None, None, None, None, None))
+
+            return txn
+
+        return self.__handle_sheet(sheet, handler)
+
+    def __handle_borrow_lend(self, sheet, file_name, book_name):
+        def handler(read, date_value, time_value, row):
+            record_type = read('B')
+            amount = read('C')
+            payee = read('D')
+            account = read('E')
+            narration = read('F')
+
+            meta = data.new_metadata(file_name, row)
+            meta['time'] = time_value
+            txn = data.Transaction(meta, date_value, "*", payee, narration.strip(),
+                                   set(book_name) if book_name is not None else set(), set(), [])
+            # TODO Currency
+            currency = 'CNY'
+
+            if record_type == "借出":
+                txn.postings.append(
+                    data.Posting(self.__get_account(account), data.Amount(-D(amount), currency), None, None, None,
+                                 None))
+                txn.postings.append(
+                    data.Posting(self.account_credit, None, None, None, None, None))
+            else:  # 收款
+                txn.postings.append(
+                    data.Posting(self.__get_account(account), data.Amount(D(amount), currency), None, None, None, None))
+                txn.postings.append(
+                    data.Posting(self.account_debt, None, None, None, None, None))
+            return txn
+
+        return self.__handle_sheet(sheet, handler)
+
+    def __handle_expenses(self, sheet, file_name, book_name):
+        def handler(read, date_value, time_value, row):
+            cate_a = read('B')
+            cate_b = read('C')
+            amount = read('D')
+            currency = read('E')
+            account = read('F')
+            project = read('G')
+            payee = read('H')
+            reimburse_status = read('I')
+            members = read('J')
+            narration = read('K')
+
+            tags = set(book_name) if book_name is not None else set()
+            links = set()
+
+            if project != "日常":
+                tags.add('-'.join(lazy_pinyin(project, style=Style.TONE3, neutral_tone_with_five=True)))
+            if reimburse_status == "待报销":
+                tags.add('Pending')
             if reimburse_status == "待报销" or reimburse_status == "已报销":
+                links.add('Reimburse')
+
+            meta = data.new_metadata(file_name, row)
+            meta['time'] = time_value
+            txn = data.Transaction(meta, date_value, "*", payee, narration.strip(),
+                                   tags, links, [])
+
+            if cate_b == '漏记款':
+                account_expense = self.account_ufo
+            else:
+                account_expense = self.__get_expense(cate_b)
+            if not re.match(r'自己：\d+\.\d+', str(members)):
+                # 有多个成员
                 txn.postings.append(
-                    data.Posting(account_expense,
-                                 data.Amount(-D(member_amount), self.__get_currency(currency)), None, None, None,
-                                 None))
-                txn.postings.append(
-                    data.Posting(self.account_reimburse,
-                                 data.Amount(D(member_amount), self.__get_currency(currency)), None, None, None,
-                                 None))
-        else:
-            txn.postings.append(
-                data.Posting(self.__get_account(account),
-                             data.Amount(-D(str(amount)), self.__get_currency(currency)), None, None,
-                             None, None))
-            if reimburse_status == "待报销" or reimburse_status == "已报销":
-                txn.postings.append(
-                    data.Posting(account_expense,
-                                 data.Amount(D('0'), self.__get_currency(currency)), None, None, None,
-                                 None))
-                txn.postings.append(
-                    data.Posting(self.account_reimburse, None, None, None, None,
-                                 None))
+                    data.Posting(self.__get_account(account), None, None, None,
+                                 None, None))
+                for m in str.split(str(members), "，"):
+                    foo = str.split(m, "：")
+                    member = foo[0]
+                    member_amount = foo[1]
+                    meta = data.new_metadata(file_name, row)
+                    if member != "自己":
+                        meta['member'] = member
+                    txn.postings.append(
+                        data.Posting(account_expense,
+                                     data.Amount(D(member_amount), self.__get_currency(currency)), None, None, None,
+                                     meta))
+                if reimburse_status == "待报销" or reimburse_status == "已报销":
+                    txn.postings.append(
+                        data.Posting(account_expense,
+                                     data.Amount(-D(member_amount), self.__get_currency(currency)), None, None, None,
+                                     None))
+                    txn.postings.append(
+                        data.Posting(self.account_reimburse,
+                                     data.Amount(D(member_amount), self.__get_currency(currency)), None, None, None,
+                                     None))
             else:
                 txn.postings.append(
-                    data.Posting(account_expense, None, None, None, None,
-                                 None))
-        return txn
+                    data.Posting(self.__get_account(account),
+                                 data.Amount(-D(str(amount)), self.__get_currency(currency)), None, None,
+                                 None, None))
+                if reimburse_status == "待报销" or reimburse_status == "已报销":
+                    txn.postings.append(
+                        data.Posting(account_expense,
+                                     data.Amount(D('0'), self.__get_currency(currency)), None, None, None,
+                                     None))
+                    txn.postings.append(
+                        data.Posting(self.account_reimburse, None, None, None, None,
+                                     None))
+                else:
+                    txn.postings.append(
+                        data.Posting(account_expense, None, None, None, None,
+                                     None))
+            return txn
 
-    return self.__handle_sheet(sheet, handler)
+        return self.__handle_sheet(sheet, handler)
 
+    def __handle_income(self, sheet, file_name, book_name):
+        def handler(read, date_value, time_value, row):
+            cate_a = read('B')
+            amount = read('C')
+            currency = read('D')
+            account = read('E')
+            project = read('F')
+            payer = read('G')
+            narration = read('I')
 
-def __handle_income(self, sheet, file_name, book_name):
-    def handler(read, date_value, time_value, row):
-        cate_a = read('B')
-        amount = read('C')
-        currency = read('D')
-        account = read('E')
-        project = read('F')
-        payer = read('G')
-        narration = read('I')
+            tags = set(book_name) if book_name is not None else set()
+            links = set()
+            if project != "日常":
+                tags.add('-'.join(lazy_pinyin(project, style=Style.TONE3, neutral_tone_with_five=True)))
 
-        tags = set(book_name) if book_name is not None else set()
-        links = set()
-        if project != "日常":
-            tags.add('-'.join(lazy_pinyin(project, style=Style.TONE3, neutral_tone_with_five=True)))
+            # 报销
+            if cate_a == "报销款":
+                account_income = self.account_reimburse
+                links.add('Reimburse')
+            elif cate_a == '漏记款':
+                account_income = self.account_ufo
+            else:
+                account_income = self.__get_income(cate_a)
 
-        # 报销
-        if cate_a == "报销款":
-            account_income = self.account_reimburse
-            links.add('Reimburse')
-        elif cate_a == '漏记款':
-            account_income = self.account_ufo
-        else:
-            account_income = self.__get_income(cate_a)
+            meta = data.new_metadata(file_name, row)
+            meta['time'] = time_value
+            txn = data.Transaction(meta, date_value, "*", payer, narration.strip(),
+                                   tags, links, [])
+            txn.postings.append(
+                data.Posting(self.__get_account(account), data.Amount(D(amount), self.__get_currency(currency)), None,
+                             None, None, None))
 
-        meta = data.new_metadata(file_name, row)
-        meta['time'] = time_value
-        txn = data.Transaction(meta, date_value, "*", payer, narration.strip(),
-                               tags, links, [])
-        txn.postings.append(
-            data.Posting(self.__get_account(account), data.Amount(D(amount), self.__get_currency(currency)), None,
-                         None, None, None))
+            txn.postings.append(
+                data.Posting(account_income, None, None, None,
+                             None, None))
+            return txn
 
-        txn.postings.append(
-            data.Posting(account_income, None, None, None,
-                         None, None))
-        return txn
+        return self.__handle_sheet(sheet, handler)
 
-    return self.__handle_sheet(sheet, handler)
+    def __handle_trans(self, sheet, file_name, book_name):
+        def handler(read, date_value, time_value, row):
+            account_out = read('B')
+            amount = read('C')
+            currency_out = read('D')
+            account_in = read('E')
+            currency_in = read('G')
+            narration = read('H')
 
+            if narration == '':
+                narration = '转账：%s -> %s' % (
+                    account_out, account_in)
 
-def __handle_trans(self, sheet, file_name, book_name):
-    def handler(read, date_value, time_value, row):
-        account_out = read('B')
-        amount = read('C')
-        currency_out = read('D')
-        account_in = read('E')
-        currency_in = read('G')
-        narration = read('H')
+            # 币种转换
 
-        if narration == '':
-            narration = '转账：%s -> %s' % (
-                account_out, account_in)
+            meta = data.new_metadata(file_name, row)
+            meta['time'] = time_value
+            txn = data.Transaction(meta, date_value, '*' if currency_in == currency_out else '!', None,
+                                   narration,
+                                   set(book_name) if book_name is not None else set(), set(), [])
+            txn.postings.append(
+                data.Posting(self.__get_account(account_in), data.Amount(D(amount), self.__get_currency(currency_out)),
+                             None,
+                             None, None, None))
+            txn.postings.append(
+                data.Posting(self.__get_account(account_out), None, None,
+                             None, None, None))
+            return txn
 
-        # 币种转换
-
-        meta = data.new_metadata(file_name, row)
-        meta['time'] = time_value
-        txn = data.Transaction(meta, date_value, '*' if currency_in == currency_out else '!', None,
-                               narration,
-                               set(book_name) if book_name is not None else set(), set(), [])
-        txn.postings.append(
-            data.Posting(self.__get_account(account_in), data.Amount(D(amount), self.__get_currency(currency_out)),
-                         None,
-                         None, None, None))
-        txn.postings.append(
-            data.Posting(self.__get_account(account_out), None, None,
-                         None, None, None))
-        return txn
-
-    return self.__handle_sheet(sheet, handler)
+        return self.__handle_sheet(sheet, handler)
