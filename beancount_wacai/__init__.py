@@ -2,7 +2,7 @@
 """
 import re
 import sys
-import xlwings as xw
+from openpyxl import load_workbook
 from beancount.ingest import importer
 from beancount.core import data
 from beancount.core.number import D
@@ -65,22 +65,21 @@ class WacaiImporter(importer.ImporterProtocol):
         else:
             book_name = '-'.join(lazy_pinyin(book_name, style=Style.TONE3, neutral_tone_with_five=True))
         entries = []
-        app = xw.App(visible=False, add_book=False)
-        wb = app.books.open(file.name)
-        for sheet in wb.sheets:
-            sheet.range('A2').api.Sort(Key1=sheet.range('A2').api, Order1=1, Orientation=1)
-            if sheet.name == "转账":
+        wb = load_workbook(filename=file_name)
+
+        for sheet_name in wb.get_sheet_names():
+            sheet = wb.get_sheet_by_name(sheet_name)
+            if sheet_name == "转账":
                 entries.extend(self.__handle_trans(sheet, file_name, book_name))
-            if sheet.name == "收入":
+            if sheet_name == "收入":
                 entries.extend(self.__handle_income(sheet, file_name, book_name))
-            if sheet.name == "支出":
+            if sheet_name == "支出":
                 entries.extend(self.__handle_expenses(sheet, file_name, book_name))
-            if sheet.name == "收款还款":
+            if sheet_name == "收款还款":
                 entries.extend(self.__handle_receipt_repayment(sheet, file_name, book_name))
-            if sheet.name == "借入借出":
+            if sheet_name == "借入借出":
                 entries.extend(self.__handle_borrow_lend(sheet, file_name, book_name))
         wb.close()
-        app.quit()
         sys.stderr.write('Unknown accounts:\n')
         sys.stderr.write('\n'.join(self.unknown_accounts))
         sys.stderr.write('\n')
@@ -119,7 +118,7 @@ class WacaiImporter(importer.ImporterProtocol):
             row_str = str(row)
 
             def read_value(col):
-                value = sheet.range(col + row_str).value
+                value = sheet[col + row_str].value
                 if value is None:
                     value = ''
                 if isinstance(value, str):
@@ -127,12 +126,12 @@ class WacaiImporter(importer.ImporterProtocol):
                 else:
                     value = str(value)
                 # 替换 ￥ 避免 GBK 错误
-                return value.replace('¥','CNY')
+                return value.replace('¥', 'CNY')
 
             return read_value;
 
         entries = []
-        for row in range(1, 9999999):
+        for row in range(2, 999999999):
             read_value = create_reader(row)
             time_str = read_value('A')
             if re.match(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', str(time_str)):
