@@ -22,6 +22,7 @@ CONFIG = [
         account_credit='Assets:Receivables',
         account_reimburse='Assets:Reimburse',
         account_ufo='Equity:Opening-Balances',
+        print_unknown_account=False
     )
 ]
 
