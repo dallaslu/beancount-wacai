@@ -58,8 +58,9 @@ CONFIG = [
         account_ufo='Equity:Opening-Balances',
     )
 ]
-### 导出挖财
 ```
+### 导出挖财
+
 在挖财网页版中，导出各个账本（导出为收费功能，最便宜的档位是 **50 元季度会员**）。解压后获得 `.xlsx`文件。验证脚本是否能处理这些文件：
 ```python
 # 假设文件都位于相对目录 wacai_example_file 中
